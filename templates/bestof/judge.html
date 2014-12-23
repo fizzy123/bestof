@@ -1,0 +1,105 @@
+{% load staticfiles %}
+
+<html>
+<head>
+  <title> Best of 2014</title>
+  <script type="text/javascript"
+          src="{% static 'jquery-2.1.0.min.js' %}"
+          ></script>
+  <script type="text/javascript"
+          src="{% static 'jquery.cookie.js' %}"
+          ></script>
+  <script>
+    var csrftoken = $.cookie('csrftoken');
+
+    function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+
+    function sameOrigin(url) {
+        // test that a given url is a same-origin URL
+        // url could be relative or scheme relative or absolute
+        var host = document.location.host; // host + port
+        var protocol = document.location.protocol;
+        var sr_origin = '//' + host;
+        var origin = protocol + sr_origin;
+        // Allow absolute or scheme relative URLs to same origin
+        return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
+            (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+            // or any other URL that isn't scheme relative or absolute i.e relative.
+            !(/^(\/\/|http:|https:).*/.test(url));
+    }
+
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
+                // Send the token to same-origin, relative URLs only.
+                // Send the token only if the method warrants CSRF protection
+                // Using the CSRFToken value acquired earlier
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+        }
+    });
+
+    var loadOptions = function() {
+        var url = "{% url 'bestof:compare' category.pk %}"
+        $.get(url, function(res) {
+            $('#nominees').slideToggle(200, function () {
+                var nomDiv1 = $("<div>", {id: res.nominee1.pk,
+                                        text: res.nominee1.title})
+                $('#nominee1').empty()
+                $('#nominee1').append(nomDiv1)
+                var nomDiv2 = $("<div>", {id: res.nominee1.pk,
+                                        text: res.nominee2.title})
+                $('#nominee2').empty()
+                $('#nominee2').append(nomDiv2)
+                $('#nominees').slideToggle(200)
+            })
+        })
+
+    }
+    $(document).ready(function() {
+        loadOptions();
+        $('#nominee1').click(function() {
+            var url = "{% url 'bestof:compare' category.pk %}"
+            var data = {}
+            data.win_nominee = $('#nominee1').children()[0].id
+            data.lose_nominee = $('#nominee2').children()[0].id
+            $.post(url, data, function(res) {
+                if (res.success) {
+                    loadOptions()
+                }
+            })
+        })
+        $('#nominee2').click(function() {
+            var url = "{% url 'bestof:compare' category.pk %}"
+            var data = {}
+            data.win_nominee = $('#nominee2').children()[0].id
+            data.lose_nominee = $('#nominee1').children()[0].id
+            $.post(url, data, function(res) {
+                if (res.success) {
+                    loadOptions()
+                }
+            })
+        })
+        $('#idk').click(loadOptions)
+    })
+  </script>
+  <link rel='stylesheet' href="{% static 'bestof.css' %}">
+</head>
+
+<body>
+    <div id='container'>
+        <div id='header'>Which is Better?</div>
+            <div id='idk' class='menu button left'>I don't know</div>
+            <a id='results' class='menu right' href="{% url 'bestof:nominees' category.pk %}">Results</a>
+            <br/>
+        <div id='nominees'>
+            <div id='nominee1' class='candidate button left'></div> 
+            <div id='nominee2' class='candidate button right'></div> 
+            <div>or</div>
+        </div>
+    </div>
+</body>
+</html>

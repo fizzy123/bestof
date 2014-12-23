@@ -1,0 +1,114 @@
+{% load staticfiles %}
+
+<html>
+<head>
+    <title>Best of 2014</title>
+    <script type="text/javascript"
+            src="{% static 'jquery-2.1.0.min.js' %}"
+            ></script>
+    <script type="text/javascript"
+            src="{% static 'jquery.cookie.js' %}"
+            ></script>
+    <script>
+        var csrftoken = $.cookie('csrftoken');
+
+        function csrfSafeMethod(method) {
+            // these HTTP methods do not require CSRF protection
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+
+        function sameOrigin(url) {
+            // test that a given url is a same-origin URL
+            // url could be relative or scheme relative or absolute
+            var host = document.location.host; // host + port
+            var protocol = document.location.protocol;
+            var sr_origin = '//' + host;
+            var origin = protocol + sr_origin;
+            // Allow absolute or scheme relative URLs to same origin
+            return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
+                (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+                // or any other URL that isn't scheme relative or absolute i.e relative.
+                !(/^(\/\/|http:|https:).*/.test(url));
+        }
+
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
+                    // Send the token to same-origin, relative URLs only.
+                    // Send the token only if the method warrants CSRF protection
+                    // Using the CSRFToken value acquired earlier
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        
+        var goToJudgementPage = function(event) {
+            var url = "{% url 'bestof:judge' 'pk' %}"
+            if (event.target.id) {
+                window.location = url.replace('pk',event.target.id)
+            } else {
+                window.location = url.replace('pk',event.target.parentNode.id)
+            }
+        }
+       
+        $(document).ready(function() {
+            $('.new_category_button').click(function(){
+                $('.category_form').slideToggle(200)
+                $('.new_category_button').toggle(200)
+            })
+            $('#new_category_submit').click(function(event) {
+                var url = "{% url 'bestof:categories' %}"
+                if ($('#category_title').val() && $('#category_caption').val()) {
+                    $.post(url, {title:$('#category_title').val(),
+                                caption:$('#category_caption').val()}, function(res) {
+                        var catDiv = $("<div>", {id:res.category.pk,
+                                                class: 'category'})
+                        var titleDiv = $("<div>", {text:res.category.title,
+                                                class: 'category_title'})
+                        var captionDiv = $("<div>", {text:res.category.caption})
+                        catDiv.append(titleDiv)
+                        catDiv.append(captionDiv)
+                        catDiv.click(goToJudgementPage)
+                        $('#category_title').val('')
+                        $('#category_caption').val('')
+                        $('#categories').prepend(catDiv)
+                    })
+                }
+            })
+            $('.category').click(goToJudgementPage)
+        });
+    </script>
+    <link rel='stylesheet' href="{% static 'bestof.css' %}">
+</head>
+
+<body>
+
+    <div id='container'>
+        <div id='header'>
+            Best of 2014
+        </div>
+        <div id='categories'>
+            {% for category in categories %}
+            <div class='category' id='{{category.pk}}'>
+                <div class='category_title'>{{ category.title }}</div>
+                <div >{{ category.caption }}</div>
+            </div>
+            {% if not forloop.last %} <hr> {% endif %}
+            {% endfor %}
+            <div class='new_category' id='new_category'>
+                <div class='new_category_button'>
+                    +
+                </div>
+                <div class='new_category_button' style="display:none">
+                    -
+                </div>
+                <div class='category_form'>
+                    Title<br/> <input type='text' name='title' id='category_title'></br>
+                    Caption<br/> <input type='text' name='caption' id='category_caption'>
+                    <div id='new_category_submit'>Submit</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

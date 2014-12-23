@@ -1,0 +1,95 @@
+{% load staticfiles %}
+
+<html>
+<head>
+    <title>Leaderboard for {{category.name}}</title>
+    <script type="text/javascript"
+            src="{% static 'jquery-2.1.0.min.js' %}"
+            ></script>
+    <script type="text/javascript"
+            src="{% static 'jquery.cookie.js' %}"
+            ></script>
+
+    <script>
+        var csrftoken = $.cookie('csrftoken');
+
+        function csrfSafeMethod(method) {
+            // these HTTP methods do not require CSRF protection
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+
+        function sameOrigin(url) {
+            // test that a given url is a same-origin URL
+            // url could be relative or scheme relative or absolute
+            var host = document.location.host; // host + port
+            var protocol = document.location.protocol;
+            var sr_origin = '//' + host;
+            var origin = protocol + sr_origin;
+            // Allow absolute or scheme relative URLs to same origin
+            return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
+                (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+                // or any other URL that isn't scheme relative or absolute i.e relative.
+                !(/^(\/\/|http:|https:).*/.test(url));
+        }
+
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
+                    // Send the token to same-origin, relative URLs only.
+                    // Send the token only if the method warrants CSRF protection
+                    // Using the CSRFToken value acquired earlier
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+       
+        $(document).ready(function() {
+            $('.add_nominee_button').click(function(){
+                $('.add_nominee_form').slideToggle(200)
+                $('.add_nominee_button').slideToggle(200)
+            })
+            $('#add_nominee_submit').click(function(event) {
+                var url = "{% url 'bestof:nominees' category.pk %}"
+                var data = {title: $('#add_nominee_title').val()}
+                $('#add_nominee_title').val('')
+                $.post(url, data, function(res) {
+                    var nomDiv = $("<div>", {class: 'nominee_container'})
+                    var titleDiv = $("<div>", {text:res.nominee.title})
+                    nomDiv.append(titleDiv)
+                    $('#nominees').append(nomDiv)
+                })
+            })
+        });
+
+    </script>
+  <link rel='stylesheet' href="{% static 'bestof.css' %}">
+</head>
+<body>
+  <div id='container'>
+    <div id='nominee_header'>
+        {{category.title}}
+        <div id='subheader'>{{category.caption}}</div>
+    </div>
+    <a class='menu left' href="{% url 'bestof:categories' %}">Home</a>
+    <a class='menu right' href="{% url 'bestof:judge' category.pk %}">Judge</a>
+
+    <div id="nominees_list">
+        {% for nominee in nominees %}
+            <div class='nominee_container'>
+                <div class='nominee_title'>
+                    {{forloop.counter}}. {{nominee.title}}
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+    <div class='add_nominee_button button' style="display:none;">-</div>
+    <div class='add_nominee_button button'>+</div>
+    <div class='add_nominee_form'>
+        Title:<br/>
+        <input type="text" name='title' id='add_nominee_title'>
+        <div id='add_nominee_submit' class='button'>Submit</div>
+    </div>
+  </div>
+</body>
+</html>
